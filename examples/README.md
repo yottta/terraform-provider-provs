@@ -9,7 +9,7 @@ load any plugins automatically
 exit status 1
 ```
 
-## Ensure that the plugin is installed correctly ([provider-install-verification](./examples/provider-install-verification) dir)
+## Ensure that the plugin is installed correctly ([provider-install-verification](./provider-install-verification) dir)
 Run `go install .` to have the plugin installed in your $GOBIN (or `go env GOBIN`). Running `ls -lah "$(go env GOBIN)" | grep "terraform-provider-"` should yield your newly installed plugin.
 
 Add a new file `~/.terraformrc` with a content similar to this one:
@@ -45,7 +45,7 @@ data.hashicups_coffees.example: Read complete after 0s
 
 No changes. Your infrastructure matches the configuration.
 ```
-## Play around with data sources ([coffees](./examples/coffees) dir
+## Play around with data sources ([coffees](./coffees) dir
 Run `tofu plan` and you should see something like this:
 ```
 
@@ -84,7 +84,7 @@ Changes to Outputs:
 ```
 
 This is a data source, this is just getting some hardcoded information from the docker app ran earlier.
-## Create, update, destroy, import resources ([order](./examples/order) dir)
+## Create, update, destroy, import resources ([order](./order) dir)
 ### Create
 First step is to apply the changes and see what happens.
 * The `computed` values will be shown as "known after apply"
@@ -137,7 +137,7 @@ With that id, run `tofu import hashicups_order.edu 2`.
 
 Running again `tofu show`, can be observed that in the state we now have referenced the order with id 2.
 
-## Test how a provider can expose functions ([compute_tax](./examples/compute_tax))
+## Test how a provider can expose functions ([compute_tax](./compute_tax))
 This is just a simple example on how a provider can expose some functions.
 Just run `terraform apply -auto-approve` and you should see an output similar to this one:
 ```
