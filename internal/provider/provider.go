@@ -3,6 +3,9 @@ package provider
 import (
 	"context"
 	"os"
+	"terraform-provider-hashicups/internal/provider/datasources"
+	"terraform-provider-hashicups/internal/provider/functions"
+	"terraform-provider-hashicups/internal/provider/resources"
 
 	"github.com/hashicorp-demoapp/hashicups-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -197,19 +200,19 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 // DataSources defines the data sources implemented in the provider.
 func (p *hashicupsProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
-		NewCoffeesDataSource,
+		datasources.NewCoffeesDataSource,
 	}
 }
 
 // Resources defines the resources implemented in the provider.
 func (p *hashicupsProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
-		NewOrderResource,
+		resources.NewOrderResource,
 	}
 }
 
 func (p *hashicupsProvider) Functions(context.Context) []func() function.Function {
 	return []func() function.Function{
-		NewComputeTaxFunction,
+		functions.NewComputeTaxFunction,
 	}
 }
