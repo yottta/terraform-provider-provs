@@ -3,16 +3,20 @@ package resources
 import (
 	"context"
 	"fmt"
-	"strconv"
+	client2 "terraform-provider-hashicups/internal/client"
+	"terraform-provider-hashicups/internal/model"
 	"time"
 
-	"github.com/hashicorp-demoapp/hashicups-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+)
+
+const (
+	orderResourceType = "order"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -52,12 +56,12 @@ func NewOrderResource() resource.Resource {
 
 // orderResource is the resource implementation.
 type orderResource struct {
-	client *hashicups.Client
+	client *orderClient
 }
 
 // Metadata returns the resource type name.
 func (r *orderResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_order"
+	resp.TypeName = req.ProviderTypeName + "_" + orderResourceType
 }
 
 // Schema defines the schema for the resource.
@@ -121,10 +125,10 @@ func (r *orderResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 
 	// Generate API request body from plan
-	var items []hashicups.OrderItem
+	var items []model.OrderItem
 	for _, item := range plan.Items {
-		items = append(items, hashicups.OrderItem{
-			Coffee: hashicups.Coffee{
+		items = append(items, model.OrderItem{
+			Coffee: model.Coffee{
 				ID: int(item.Coffee.ID.ValueInt64()),
 			},
 			Quantity: int(item.Quantity.ValueInt64()),
@@ -132,7 +136,7 @@ func (r *orderResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 
 	// Create new order
-	order, err := r.client.CreateOrder(items)
+	order, err := r.client.create(items)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating order",
@@ -142,7 +146,7 @@ func (r *orderResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 
 	// Map response body to schema and populate Computed attribute values
-	plan.ID = types.StringValue(strconv.Itoa(order.ID))
+	plan.ID = types.StringValue(order.ID)
 	for orderItemIndex, orderItem := range order.Items {
 		plan.Items[orderItemIndex] = orderItemModel{
 			Coffee: orderItemCoffeeModel{
@@ -177,7 +181,7 @@ func (r *orderResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	}
 
 	// Get refreshed order value from HashiCups
-	order, err := r.client.GetOrder(state.ID.ValueString())
+	order, err := r.client.get(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading HashiCups Order",
@@ -220,10 +224,10 @@ func (r *orderResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	}
 
 	// Generate API request body from plan
-	var hashicupsItems []hashicups.OrderItem
+	var hashicupsItems []model.OrderItem
 	for _, item := range plan.Items {
-		hashicupsItems = append(hashicupsItems, hashicups.OrderItem{
-			Coffee: hashicups.Coffee{
+		hashicupsItems = append(hashicupsItems, model.OrderItem{
+			Coffee: model.Coffee{
 				ID: int(item.Coffee.ID.ValueInt64()),
 			},
 			Quantity: int(item.Quantity.ValueInt64()),
@@ -231,8 +235,7 @@ func (r *orderResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	}
 
 	// Update existing order
-	_, err := r.client.UpdateOrder(plan.ID.ValueString(), hashicupsItems)
-	if err != nil {
+	if err := r.client.update(plan.ID.ValueString(), hashicupsItems); err != nil {
 		resp.Diagnostics.AddError(
 			"Error Updating HashiCups Order",
 			"Could not update order, unexpected error: "+err.Error(),
@@ -242,7 +245,7 @@ func (r *orderResource) Update(ctx context.Context, req resource.UpdateRequest, 
 
 	// Fetch updated items from GetOrder as UpdateOrder items are not
 	// populated.
-	order, err := r.client.GetOrder(plan.ID.ValueString())
+	order, err := r.client.get(plan.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading HashiCups Order",
@@ -285,8 +288,7 @@ func (r *orderResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 		return
 	}
 
-	err := r.client.DeleteOrder(state.ID.ValueString())
-	if err != nil {
+	if err := r.client.delete(state.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError(
 			"Error Deleting HashiCups Order",
 			"Could not delete order, unexpected error: "+err.Error(),
@@ -309,7 +311,7 @@ func (r *orderResource) Configure(_ context.Context, req resource.ConfigureReque
 		return
 	}
 
-	client, ok := req.ProviderData.(*hashicups.Client)
+	client, ok := req.ProviderData.(client2.BackendClient)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -320,5 +322,8 @@ func (r *orderResource) Configure(_ context.Context, req resource.ConfigureReque
 		return
 	}
 
-	r.client = client
+	cc := &orderClient{
+		c: client,
+	}
+	r.client = cc
 }

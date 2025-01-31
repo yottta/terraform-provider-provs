@@ -83,14 +83,15 @@ Changes to Outputs:
 ...
 ```
 
-This is a data source, this is just getting some hardcoded information from the docker app ran earlier.
+This is a data source, this is just getting some hardcoded information from the provider.
+The data can be seen by running `ls -lah /var/tmp/custom_tf_provider/coffees/`.
 ## Create, update, destroy, import resources ([order](./order) dir)
 ### Create
 First step is to apply the changes and see what happens.
 * The `computed` values will be shown as "known after apply"
 * `id` of the order is "known after apply"
-* Checking the actual server, we can see the order in the response
-  * `curl -X GET  -H "Authorization: ${HASHICUPS_TOKEN}" localhost:19090/orders`
+* Checking the filesystem to see that everything is created correctly
+  * `ls -lah /var/tmp/custom_tf_provider/order/`
 
 ### Update
 Edit [order/main.tf](./order/main.tf) and update the id of the second coffe from the order:
@@ -117,11 +118,11 @@ Run `tofu apply` and this is highlighting the following:
 * The values of the updated order will be "known after apply"
 * Once applied, it succeeds:
   * Check the state with `tofu show`
-  * Check the service to see that the order is updated `curl -X GET  -H "Authorization: ${HASHICUPS_TOKEN}" localhost:19090/orders`
+  * Check the filesystem to ensure that the order was created `ls -lah /var/tmp/custom_tf_provider/order/`.
 
 ### Delete
 Just run `tofu destroy` and the order should be deleted from the actual server.
-Check this by checking again `curl -X GET  -H "Authorization: ${HASHICUPS_TOKEN}" localhost:19090/orders`. The response should be an empty object.
+Check this by checking again `ls -lah /var/tmp/custom_tf_provider/order/`. The directory should be empty.
 
 ### Import
 Assuming that the guide in this file was followed step by step, you should have no resources created anymore.
@@ -132,8 +133,8 @@ By running `tofu show` can be seen that the resource is created and saved into o
 Now, let's remove the resource from the state by running `terraform state rm hashicups_order.edu`.
 Having this removed from the state, by running `tofu show` can be seen that the resource is not tracked by OpenTofu anymore (only the output will be in the state).
 
-To import a resource, we need its `id`. Do to so, run `curl -X GET -H "Authorization: ${HASHICUPS_TOKEN}" localhost:19090/orders` and get the id of the object in there (probably id=2).
-With that id, run `tofu import hashicups_order.edu 2`.
+To import a resource, we need its `id`. Do to so, run `ls -lah /var/tmp/custom_tf_provider/order/` and get the file name visible there.
+With that id, run `tofu import hashicups_order.edu <file name>`.
 
 Running again `tofu show`, can be observed that in the state we now have referenced the order with id 2.
 

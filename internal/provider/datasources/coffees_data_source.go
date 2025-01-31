@@ -3,11 +3,16 @@ package datasources
 import (
 	"context"
 	"fmt"
+	"terraform-provider-hashicups/internal/client"
+	"terraform-provider-hashicups/internal/model"
 
-	"github.com/hashicorp-demoapp/hashicups-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+)
+
+const (
+	coffeesResourceType = "coffees"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -44,12 +49,12 @@ func NewCoffeesDataSource() datasource.DataSource {
 
 // coffeesDataSource is the data source implementation.
 type coffeesDataSource struct {
-	client *hashicups.Client
+	client *coffeesClient
 }
 
 // Metadata returns the data source type name.
 func (d *coffeesDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_coffees"
+	resp.TypeName = req.ProviderTypeName + "_" + coffeesResourceType
 }
 
 // Schema defines the schema for the data source.
@@ -96,10 +101,10 @@ func (d *coffeesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 }
 
 // Read refreshes the Terraform state with the latest data.
-func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+func (d *coffeesDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var state coffeesDataSourceModel
 
-	coffees, err := d.client.GetCoffees()
+	coffees, err := d.client.allCoffees()
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to Read HashiCups Coffees",
@@ -144,15 +149,44 @@ func (d *coffeesDataSource) Configure(_ context.Context, req datasource.Configur
 		return
 	}
 
-	client, ok := req.ProviderData.(*hashicups.Client)
+	c, ok := req.ProviderData.(client.BackendClient)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *hashicups.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected client.BackendClient, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 
 		return
 	}
 
-	d.client = client
+	cc := &coffeesClient{c: c}
+	_, err := c.Read(coffeesResourceType, "1")
+	if err != nil {
+		// coffees not initialized, create all of them
+		for i := 1; i < 10; i++ {
+			var ingredients []model.Ingredient
+			for j := 0; j < i; j++ {
+				ingredients = append(ingredients, model.Ingredient{
+					ID:       j,
+					Name:     fmt.Sprintf("Ingredient name %d", j),
+					Quantity: i * j,
+				})
+			}
+			if err := cc.createCoffee(model.Coffee{
+				ID:          i,
+				Name:        fmt.Sprintf("Name %d", i),
+				Teaser:      fmt.Sprintf("Teaser %d", i),
+				Description: fmt.Sprintf("Description %d", i),
+				Price:       1.1,
+				Ingredient:  ingredients,
+			}); err != nil {
+				resp.Diagnostics.AddError(
+					"Unexpected Data Source Configure Type",
+					fmt.Sprintf("Failed to configure the available coffees: %v", err),
+				)
+			}
+		}
+	}
+
+	d.client = cc
 }

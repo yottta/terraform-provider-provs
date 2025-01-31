@@ -7,9 +7,7 @@ terraform {
 }
 
 provider "hashicups" {
-  host     = "http://localhost:19090"
-  username = "education"
-  password = "test123"
+  path = "/var/tmp/custom_tf_provider"
 }
 
 data "hashicups_coffees" "edu" {}

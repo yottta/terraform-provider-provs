@@ -3,11 +3,11 @@ package provider
 import (
 	"context"
 	"os"
+	client2 "terraform-provider-hashicups/internal/client"
 	"terraform-provider-hashicups/internal/provider/datasources"
 	"terraform-provider-hashicups/internal/provider/functions"
 	"terraform-provider-hashicups/internal/provider/resources"
 
-	"github.com/hashicorp-demoapp/hashicups-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/function"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -26,9 +26,7 @@ var (
 
 // hashicupsProviderModel maps provider schema data to a Go type.
 type hashicupsProviderModel struct {
-	Host     types.String `tfsdk:"host"`
-	Username types.String `tfsdk:"username"`
-	Password types.String `tfsdk:"password"`
+	Path types.String `tfsdk:"path"`
 }
 
 // New is a helper function to simplify provider server and testing implementation.
@@ -58,22 +56,15 @@ func (p *hashicupsProvider) Metadata(_ context.Context, _ provider.MetadataReque
 func (p *hashicupsProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"host": schema.StringAttribute{
+			"path": schema.StringAttribute{
 				Optional: true,
-			},
-			"username": schema.StringAttribute{
-				Optional: true,
-			},
-			"password": schema.StringAttribute{
-				Optional:  true,
-				Sensitive: true,
 			},
 		},
 	}
 }
 
 func (p *hashicupsProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
-	tflog.Info(ctx, "Configuring HashiCups client")
+	tflog.Info(ctx, "Configuring provider client")
 	// Retrieve provider data from configuration
 	var config hashicupsProviderModel
 	diags := req.Config.Get(ctx, &config)
@@ -84,31 +75,12 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 
 	// If practitioner provided a configuration value for any of the
 	// attributes, it must be a known value.
-
-	if config.Host.IsUnknown() {
+	if config.Path.IsUnknown() {
 		resp.Diagnostics.AddAttributeError(
-			path.Root("host"),
-			"Unknown HashiCups API Host",
-			"The provider cannot create the HashiCups API client as there is an unknown configuration value for the HashiCups API host. "+
-				"Either target apply the source of the value first, set the value statically in the configuration, or use the HASHICUPS_HOST environment variable.",
-		)
-	}
-
-	if config.Username.IsUnknown() {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("username"),
-			"Unknown HashiCups API Username",
-			"The provider cannot create the HashiCups API client as there is an unknown configuration value for the HashiCups API username. "+
-				"Either target apply the source of the value first, set the value statically in the configuration, or use the HASHICUPS_USERNAME environment variable.",
-		)
-	}
-
-	if config.Password.IsUnknown() {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("password"),
-			"Unknown HashiCups API Password",
-			"The provider cannot create the HashiCups API client as there is an unknown configuration value for the HashiCups API password. "+
-				"Either target apply the source of the value first, set the value statically in the configuration, or use the HASHICUPS_PASSWORD environment variable.",
+			path.Root("path"),
+			"Unknown path for storing provider data",
+			"The provider cannot create the fs client as there is an unknown configuration value for the the storage path. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the HASHICUPS_PATH environment variable.",
 		)
 	}
 
@@ -118,52 +90,20 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 
 	// Default values to environment variables, but override
 	// with Terraform configuration value if set.
-
-	host := os.Getenv("HASHICUPS_HOST")
-	username := os.Getenv("HASHICUPS_USERNAME")
-	password := os.Getenv("HASHICUPS_PASSWORD")
-
-	if !config.Host.IsNull() {
-		host = config.Host.ValueString()
-	}
-
-	if !config.Username.IsNull() {
-		username = config.Username.ValueString()
-	}
-
-	if !config.Password.IsNull() {
-		password = config.Password.ValueString()
+	storagePath := os.Getenv("HASHICUPS_PATH")
+	if !config.Path.IsNull() {
+		storagePath = config.Path.ValueString()
 	}
 
 	// If any of the expected configurations are missing, return
 	// errors with provider-specific guidance.
 
-	if host == "" {
+	if storagePath == "" {
 		resp.Diagnostics.AddAttributeError(
-			path.Root("host"),
-			"Missing HashiCups API Host",
+			path.Root("path"),
+			"Missing HashiCups storage path",
 			"The provider cannot create the HashiCups API client as there is a missing or empty value for the HashiCups API host. "+
-				"Set the host value in the configuration or use the HASHICUPS_HOST environment variable. "+
-				"If either is already set, ensure the value is not empty.",
-		)
-	}
-
-	if username == "" {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("username"),
-			"Missing HashiCups API Username",
-			"The provider cannot create the HashiCups API client as there is a missing or empty value for the HashiCups API username. "+
-				"Set the username value in the configuration or use the HASHICUPS_USERNAME environment variable. "+
-				"If either is already set, ensure the value is not empty.",
-		)
-	}
-
-	if password == "" {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("password"),
-			"Missing HashiCups API Password",
-			"The provider cannot create the HashiCups API client as there is a missing or empty value for the HashiCups API password. "+
-				"Set the password value in the configuration or use the HASHICUPS_PASSWORD environment variable. "+
+				"Set the host value in the configuration or use the HASHICUPS_PATH environment variable. "+
 				"If either is already set, ensure the value is not empty.",
 		)
 	}
@@ -171,18 +111,15 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	ctx = tflog.SetField(ctx, "hashicups_host", host)
-	ctx = tflog.SetField(ctx, "hashicups_username", username)
-	ctx = tflog.SetField(ctx, "hashicups_password", password)
-	ctx = tflog.MaskFieldValuesWithFieldKeys(ctx, "hashicups_password")
+	ctx = tflog.SetField(ctx, "hashicups_path", storagePath)
 
 	tflog.Debug(ctx, "Creating HashiCups client")
 
 	// Create a new HashiCups client using the configuration values
-	client, err := hashicups.NewClient(&host, &username, &password)
+	c, err := client2.NewFsClient(storagePath)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Unable to Create HashiCups API Client",
+			"Unable to Create HashiCups storage client",
 			"An unexpected error occurred when creating the HashiCups API client. "+
 				"If the error is not clear, please contact the provider developers.\n\n"+
 				"HashiCups Client Error: "+err.Error(),
@@ -192,8 +129,8 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 
 	// Make the HashiCups client available during DataSource and Resource
 	// type Configure methods.
-	resp.DataSourceData = client
-	resp.ResourceData = client
+	resp.DataSourceData = c
+	resp.ResourceData = c
 	tflog.Info(ctx, "Configured HashiCups client", map[string]any{"success": true})
 }
 
