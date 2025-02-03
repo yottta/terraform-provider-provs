@@ -1,17 +1,17 @@
 terraform {
   required_providers {
-    hashicups = {
-      source  = "hashicorp.com/edu/hashicups"
+    provs = {
+      source  = "registry.opentofu.org/edu/provs"
     }
   }
   required_version = ">= 1.1.0"
 }
 
-provider "hashicups" {
+provider "provs" {
   path = "/var/tmp/custom_tf_provider"
 }
 
-resource "hashicups_order" "edu" {
+resource "provs_order" "new_order" {
   items = [{
     coffee = {
       id = 3
@@ -26,7 +26,7 @@ resource "hashicups_order" "edu" {
   ]
 }
 
-output "edu_order" {
-  value = hashicups_order.edu
+output "order" {
+  value = provs_order.new_order
 }
 

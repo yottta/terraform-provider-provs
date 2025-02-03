@@ -180,12 +180,12 @@ func (r *orderResource) Read(ctx context.Context, req resource.ReadRequest, resp
 		return
 	}
 
-	// Get refreshed order value from HashiCups
+	// Get refreshed order value
 	order, err := r.client.get(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error Reading HashiCups Order",
-			"Could not read HashiCups order ID "+state.ID.ValueString()+": "+err.Error(),
+			"Error Reading Order",
+			"Could not read order ID "+state.ID.ValueString()+": "+err.Error(),
 		)
 		return
 	}
@@ -224,9 +224,9 @@ func (r *orderResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	}
 
 	// Generate API request body from plan
-	var hashicupsItems []model.OrderItem
+	var orders []model.OrderItem
 	for _, item := range plan.Items {
-		hashicupsItems = append(hashicupsItems, model.OrderItem{
+		orders = append(orders, model.OrderItem{
 			Coffee: model.Coffee{
 				ID: int(item.Coffee.ID.ValueInt64()),
 			},
@@ -235,9 +235,9 @@ func (r *orderResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	}
 
 	// Update existing order
-	if err := r.client.update(plan.ID.ValueString(), hashicupsItems); err != nil {
+	if err := r.client.update(plan.ID.ValueString(), orders); err != nil {
 		resp.Diagnostics.AddError(
-			"Error Updating HashiCups Order",
+			"Error Updating Order",
 			"Could not update order, unexpected error: "+err.Error(),
 		)
 		return
@@ -248,8 +248,8 @@ func (r *orderResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	order, err := r.client.get(plan.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error Reading HashiCups Order",
-			"Could not read HashiCups order ID "+plan.ID.ValueString()+": "+err.Error(),
+			"Error Reading Order",
+			"Could not read order ID "+plan.ID.ValueString()+": "+err.Error(),
 		)
 		return
 	}
@@ -290,7 +290,7 @@ func (r *orderResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 
 	if err := r.client.delete(state.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError(
-			"Error Deleting HashiCups Order",
+			"Error Deleting Order",
 			"Could not delete order, unexpected error: "+err.Error(),
 		)
 		return
@@ -316,7 +316,7 @@ func (r *orderResource) Configure(_ context.Context, req resource.ConfigureReque
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *hashicups.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected client.BackendClient, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 
 		return

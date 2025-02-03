@@ -107,7 +107,7 @@ func (d *coffeesDataSource) Read(ctx context.Context, _ datasource.ReadRequest, 
 	coffees, err := d.client.allCoffees()
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Unable to Read HashiCups Coffees",
+			"Unable to Read Coffees",
 			err.Error(),
 		)
 		return

@@ -17,7 +17,7 @@ Add a new file `~/.terraformrc` with a content similar to this one:
 provider_installation {
 
   dev_overrides {
-    "hashicorp.com/edu/hashicups" = "<the path that $GOBIN is pointing to>"
+      "registry.opentofu.org/edu/provs" = "<the path that $GOBIN is pointing to>"
   }
 
   # For all other providers, install them directly from their origin provider
@@ -35,15 +35,16 @@ You should get a response like this:
 │ Warning: Provider development overrides are in effect
 │
 │ The following provider development overrides are set in the CLI configuration:
-│  - hashicorp.com/edu/hashicups in <your GOBIN path>
+│  - edu/provs in "<the path that $GOBIN is pointing to>"
 │
-│ The behavior may therefore not match any released version of the provider and applying changes may cause the state to become
-│ incompatible with published releases.
+│ The behavior may therefore not match any released version of the provider and applying changes may cause the state to become incompatible with published releases.
 ╵
-data.hashicups_coffees.example: Reading...
-data.hashicups_coffees.example: Read complete after 0s
+data.provs_coffees.example: Reading...
+data.provs_coffees.example: Read complete after 0s
 
 No changes. Your infrastructure matches the configuration.
+
+OpenTofu has compared your real infrastructure against your configuration and found no differences, so no changes are needed.
 ```
 ## Play around with data sources ([coffees](./coffees) dir
 Run `tofu plan` and you should see something like this:
@@ -53,34 +54,24 @@ Run `tofu plan` and you should see something like this:
 │ Warning: Provider development overrides are in effect
 │
 │ The following provider development overrides are set in the CLI configuration:
-│  - hashicorp.com/edu/hashicups in <your GOBIN path>
+│  - edu/provs in "<the path that $GOBIN is pointing to>"
 │
-│ The behavior may therefore not match any released version of the provider and applying changes may cause the state to become
-│ incompatible with published releases.
+│ The behavior may therefore not match any released version of the provider and applying changes may cause the state to become incompatible with published releases.
 ╵
-data.hashicups_coffees.edu: Reading...
-data.hashicups_coffees.edu: Read complete after 0s
+data.provs_coffees.test_coffees: Reading...
+data.provs_coffees.test_coffees: Read complete after 0s
 
 Changes to Outputs:
-  + edu_coffees = {
+  + coffees = {
       + coffees = [
           + {
-              + description = ""
-              + id          = 1
-              + image       = "/hashicorp.png"
+              + description = "Description 9"
+              + id          = 9
+              + image       = ""
               + ingredients = [
                   + {
-                      + id = 6
-                    },
-                ]
-              + name        = "HCP Aeropress"
-              + price       = 200
-              + teaser      = "Automation in a cup"
-            },
-          + {
-              + description = ""
-              + id          = 2
-...
+                      + id = 0
+...                     
 ```
 
 This is a data source, this is just getting some hardcoded information from the provider.
@@ -97,7 +88,7 @@ First step is to apply the changes and see what happens.
 Edit [order/main.tf](./order/main.tf) and update the id of the second coffe from the order:
 ```
 
-resource "hashicups_order" "edu" {
+resource "provs_order" "edu" {
   items = [{
     coffee = {
       id = 3
@@ -128,15 +119,15 @@ Check this by checking again `ls -lah /var/tmp/custom_tf_provider/order/`. The d
 Assuming that the guide in this file was followed step by step, you should have no resources created anymore.
 Therefore, let's create one by running `tofu apply --auto-approve`.
 
-By running `tofu show` can be seen that the resource is created and saved into our state (use the `curl` command above to be sure that the resource is created on the server too).
+By running `tofu show` can be seen that the resource is created and saved into our state.
 
-Now, let's remove the resource from the state by running `terraform state rm hashicups_order.edu`.
+Now, let's remove the resource from the state by running `tofu state rm provs_order.new_order`.
 Having this removed from the state, by running `tofu show` can be seen that the resource is not tracked by OpenTofu anymore (only the output will be in the state).
 
 To import a resource, we need its `id`. Do to so, run `ls -lah /var/tmp/custom_tf_provider/order/` and get the file name visible there.
-With that id, run `tofu import hashicups_order.edu <file name>`.
+With that id, run `tofu import provs_order.new_order <file name>`.
 
-Running again `tofu show`, can be observed that in the state we now have referenced the order with id 2.
+Running again `tofu show`, can be observed that in the state we now have referenced the order with the id provided above.
 
 ## Test how a provider can expose functions ([compute_tax](./compute_tax))
 This is just a simple example on how a provider can expose some functions.
@@ -148,7 +139,7 @@ Just run `terraform apply -auto-approve` and you should see an output similar to
 │ Warning: Provider development overrides are in effect
 │
 │ The following provider development overrides are set in the CLI configuration:
-│  - hashicorp.com/edu/hashicups in <your GOBIN path>
+│  - edu/provs in <your GOBIN path>
 │
 │ The behavior may therefore not match any released version of the provider and applying changes may cause the state to become
 │ incompatible with published releases.

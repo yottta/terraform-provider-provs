@@ -1,18 +1,18 @@
 terraform {
   required_providers {
-    hashicups = {
-      source = "hashicorp.com/edu/hashicups"
+    provs = {
+      source = "registry.opentofu.org/edu/provs"
     }
   }
 }
 
-provider "hashicups" {
+provider "provs" {
   path = "/var/tmp/custom_tf_provider"
 }
 
-data "hashicups_coffees" "edu" {}
+data "provs_coffees" "test_coffees" {}
 
-output "edu_coffees" {
-  value = data.hashicups_coffees.edu
+output "coffees" {
+  value = data.provs_coffees.test_coffees
 }
 

@@ -37,7 +37,7 @@ type issue2372SingleNestedValResourceModel struct {
 }
 
 // GetSchema defines the schema for the resource.
-func (r *issue2372Resource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (r *issue2372Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Issue 2372 resource",
 
