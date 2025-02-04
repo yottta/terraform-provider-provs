@@ -8,6 +8,7 @@ import (
 	"terraform-provider-provs/internal/client"
 	"terraform-provider-provs/internal/model"
 
+	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -42,7 +43,7 @@ type orderItemModel struct {
 
 // orderItemCoffeeModel maps coffee order item data.
 type orderItemCoffeeModel struct {
-	ID          types.Int64   `tfsdk:"id"`
+	ID          types.String  `tfsdk:"id"`
 	Name        types.String  `tfsdk:"name"`
 	Teaser      types.String  `tfsdk:"teaser"`
 	Description types.String  `tfsdk:"description"`
@@ -57,7 +58,7 @@ func NewOrderResource() resource.Resource {
 
 // orderResource is the resource implementation.
 type orderResource struct {
-	client *orderClient
+	client client.Client[*model.Order]
 }
 
 // Metadata returns the resource type name.
@@ -88,7 +89,7 @@ func (r *orderResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 						"coffee": schema.SingleNestedAttribute{
 							Required: true,
 							Attributes: map[string]schema.Attribute{
-								"id": schema.Int64Attribute{
+								"id": schema.StringAttribute{
 									Required: true,
 								},
 								"name": schema.StringAttribute{
@@ -130,15 +131,18 @@ func (r *orderResource) Create(ctx context.Context, req resource.CreateRequest, 
 	for _, item := range plan.Items {
 		items = append(items, model.OrderItem{
 			Coffee: model.Coffee{
-				ID: int(item.Coffee.ID.ValueInt64()),
+				ID: item.Coffee.ID.ValueString(),
 			},
 			Quantity: int(item.Quantity.ValueInt64()),
 		})
 	}
 
 	// Create new order
-	order, err := r.client.create(items)
-	if err != nil {
+	o := &model.Order{
+		ID:    uuid.NewString(),
+		Items: items,
+	}
+	if err := r.client.CreateWithID(o); err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating order",
 			"Could not create order, unexpected error: "+err.Error(),
@@ -147,11 +151,11 @@ func (r *orderResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 
 	// Map response body to schema and populate Computed attribute values
-	plan.ID = types.StringValue(order.ID)
-	for orderItemIndex, orderItem := range order.Items {
+	plan.ID = types.StringValue(o.ID)
+	for orderItemIndex, orderItem := range o.Items {
 		plan.Items[orderItemIndex] = orderItemModel{
 			Coffee: orderItemCoffeeModel{
-				ID:          types.Int64Value(int64(orderItem.Coffee.ID)),
+				ID:          types.StringValue(orderItem.Coffee.ID),
 				Name:        types.StringValue(orderItem.Coffee.Name),
 				Teaser:      types.StringValue(orderItem.Coffee.Teaser),
 				Description: types.StringValue(orderItem.Coffee.Description),
@@ -182,7 +186,7 @@ func (r *orderResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	}
 
 	// Get refreshed order value
-	order, err := r.client.get(state.ID.ValueString())
+	order, err := r.client.GetByID(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Order",
@@ -196,7 +200,7 @@ func (r *orderResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	for _, item := range order.Items {
 		state.Items = append(state.Items, orderItemModel{
 			Coffee: orderItemCoffeeModel{
-				ID:          types.Int64Value(int64(item.Coffee.ID)),
+				ID:          types.StringValue(item.Coffee.ID),
 				Name:        types.StringValue(item.Coffee.Name),
 				Teaser:      types.StringValue(item.Coffee.Teaser),
 				Description: types.StringValue(item.Coffee.Description),
@@ -225,18 +229,22 @@ func (r *orderResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	}
 
 	// Generate API request body from plan
-	var orders []model.OrderItem
+	var items []model.OrderItem
 	for _, item := range plan.Items {
-		orders = append(orders, model.OrderItem{
+		items = append(items, model.OrderItem{
 			Coffee: model.Coffee{
-				ID: int(item.Coffee.ID.ValueInt64()),
+				ID: item.Coffee.ID.ValueString(),
 			},
 			Quantity: int(item.Quantity.ValueInt64()),
 		})
 	}
 
+	o := &model.Order{
+		ID:    plan.ID.ValueString(),
+		Items: items,
+	}
 	// Update existing order
-	if err := r.client.update(plan.ID.ValueString(), orders); err != nil {
+	if err := r.client.Update(o); err != nil {
 		resp.Diagnostics.AddError(
 			"Error Updating Order",
 			"Could not update order, unexpected error: "+err.Error(),
@@ -246,7 +254,7 @@ func (r *orderResource) Update(ctx context.Context, req resource.UpdateRequest, 
 
 	// Fetch updated items from GetOrder as UpdateOrder items are not
 	// populated.
-	order, err := r.client.get(plan.ID.ValueString())
+	order, err := r.client.GetByID(plan.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Order",
@@ -260,7 +268,7 @@ func (r *orderResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	for _, item := range order.Items {
 		plan.Items = append(plan.Items, orderItemModel{
 			Coffee: orderItemCoffeeModel{
-				ID:          types.Int64Value(int64(item.Coffee.ID)),
+				ID:          types.StringValue(item.Coffee.ID),
 				Name:        types.StringValue(item.Coffee.Name),
 				Teaser:      types.StringValue(item.Coffee.Teaser),
 				Description: types.StringValue(item.Coffee.Description),
@@ -289,7 +297,7 @@ func (r *orderResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 		return
 	}
 
-	if err := r.client.delete(state.ID.ValueString()); err != nil {
+	if err := r.client.Delete(state.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError(
 			"Error Deleting Order",
 			"Could not delete order, unexpected error: "+err.Error(),
@@ -312,7 +320,7 @@ func (r *orderResource) Configure(_ context.Context, req resource.ConfigureReque
 		return
 	}
 
-	client, ok := req.ProviderData.(client.BackendClient)
+	c, ok := req.ProviderData.(client.BackendClient)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -323,8 +331,5 @@ func (r *orderResource) Configure(_ context.Context, req resource.ConfigureReque
 		return
 	}
 
-	cc := &orderClient{
-		c: client,
-	}
-	r.client = cc
+	r.client = client.NewClient[*model.Order](c, orderResourceType)
 }

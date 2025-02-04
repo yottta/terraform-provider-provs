@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"terraform-provider-provs/internal/client"
 	"terraform-provider-provs/internal/model"
 
@@ -29,7 +30,7 @@ type coffeesDataSourceModel struct {
 
 // coffeesModel maps coffees schema data.
 type coffeesModel struct {
-	ID          types.Int64               `tfsdk:"id"`
+	ID          types.String              `tfsdk:"id"`
 	Name        types.String              `tfsdk:"name"`
 	Teaser      types.String              `tfsdk:"teaser"`
 	Description types.String              `tfsdk:"description"`
@@ -40,7 +41,7 @@ type coffeesModel struct {
 
 // coffeesIngredientsModel maps coffee ingredients data
 type coffeesIngredientsModel struct {
-	ID types.Int64 `tfsdk:"id"`
+	ID types.String `tfsdk:"id"`
 }
 
 // NewCoffeesDataSource is a helper function to simplify the provider implementation.
@@ -50,7 +51,7 @@ func NewCoffeesDataSource() datasource.DataSource {
 
 // coffeesDataSource is the data source implementation.
 type coffeesDataSource struct {
-	client *coffeesClient
+	client client.Client[*model.Coffee]
 }
 
 // Metadata returns the data source type name.
@@ -66,7 +67,7 @@ func (d *coffeesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"id": schema.Int64Attribute{
+						"id": schema.StringAttribute{
 							Computed: true,
 						},
 						"name": schema.StringAttribute{
@@ -88,7 +89,7 @@ func (d *coffeesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 							Computed: true,
 							NestedObject: schema.NestedAttributeObject{
 								Attributes: map[string]schema.Attribute{
-									"id": schema.Int64Attribute{
+									"id": schema.StringAttribute{
 										Computed: true,
 									},
 								},
@@ -105,7 +106,7 @@ func (d *coffeesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 func (d *coffeesDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var state coffeesDataSourceModel
 
-	coffees, err := d.client.allCoffees()
+	coffees, err := d.client.GetAll()
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to Read Coffees",
@@ -117,7 +118,7 @@ func (d *coffeesDataSource) Read(ctx context.Context, _ datasource.ReadRequest, 
 	// Map response body to model
 	for _, coffee := range coffees {
 		coffeeState := coffeesModel{
-			ID:          types.Int64Value(int64(coffee.ID)),
+			ID:          types.StringValue(coffee.ID),
 			Name:        types.StringValue(coffee.Name),
 			Teaser:      types.StringValue(coffee.Teaser),
 			Description: types.StringValue(coffee.Description),
@@ -127,7 +128,7 @@ func (d *coffeesDataSource) Read(ctx context.Context, _ datasource.ReadRequest, 
 
 		for _, ingredient := range coffee.Ingredient {
 			coffeeState.Ingredients = append(coffeeState.Ingredients, coffeesIngredientsModel{
-				ID: types.Int64Value(int64(ingredient.ID)),
+				ID: types.StringValue(ingredient.ID),
 			})
 		}
 
@@ -160,9 +161,7 @@ func (d *coffeesDataSource) Configure(_ context.Context, req datasource.Configur
 		return
 	}
 
-	cc := &coffeesClient{c: c}
-	d.client = cc
-
+	d.client = client.NewClient[*model.Coffee](c, coffeesResourceType)
 	if err := d.provisionData(); err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to create coffee data",
@@ -172,20 +171,20 @@ func (d *coffeesDataSource) Configure(_ context.Context, req datasource.Configur
 }
 
 func (d *coffeesDataSource) provisionData() error {
-	_, err := d.client.c.Read(coffeesResourceType, "1")
+	_, err := d.client.GetByID("1")
 	if os.IsNotExist(err) {
 		// coffees not initialized, create all of them
 		for i := 1; i < 10; i++ {
 			var ingredients []model.Ingredient
 			for j := 0; j < i; j++ {
 				ingredients = append(ingredients, model.Ingredient{
-					ID:       j,
+					ID:       strconv.Itoa(j),
 					Name:     fmt.Sprintf("Ingredient name %d", j),
 					Quantity: i * j,
 				})
 			}
-			if err := d.client.createCoffee(model.Coffee{
-				ID:          i,
+			if err := d.client.CreateWithID(&model.Coffee{
+				ID:          strconv.Itoa(i),
 				Name:        fmt.Sprintf("Name %d", i),
 				Teaser:      fmt.Sprintf("Teaser %d", i),
 				Description: fmt.Sprintf("Description %d", i),
