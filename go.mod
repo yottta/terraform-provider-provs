@@ -1,4 +1,4 @@
-module terraform-provider-hashicups
+module terraform-provider-provs
 
 go 1.22.7
 

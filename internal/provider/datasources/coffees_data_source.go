@@ -3,8 +3,9 @@ package datasources
 import (
 	"context"
 	"fmt"
-	"terraform-provider-hashicups/internal/client"
-	"terraform-provider-hashicups/internal/model"
+	"os"
+	"terraform-provider-provs/internal/client"
+	"terraform-provider-provs/internal/model"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -160,8 +161,19 @@ func (d *coffeesDataSource) Configure(_ context.Context, req datasource.Configur
 	}
 
 	cc := &coffeesClient{c: c}
-	_, err := c.Read(coffeesResourceType, "1")
-	if err != nil {
+	d.client = cc
+
+	if err := d.provisionData(); err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to create coffee data",
+			fmt.Sprintf("Failed to configure the available coffees: %v", err),
+		)
+	}
+}
+
+func (d *coffeesDataSource) provisionData() error {
+	_, err := d.client.c.Read(coffeesResourceType, "1")
+	if os.IsNotExist(err) {
 		// coffees not initialized, create all of them
 		for i := 1; i < 10; i++ {
 			var ingredients []model.Ingredient
@@ -172,7 +184,7 @@ func (d *coffeesDataSource) Configure(_ context.Context, req datasource.Configur
 					Quantity: i * j,
 				})
 			}
-			if err := cc.createCoffee(model.Coffee{
+			if err := d.client.createCoffee(model.Coffee{
 				ID:          i,
 				Name:        fmt.Sprintf("Name %d", i),
 				Teaser:      fmt.Sprintf("Teaser %d", i),
@@ -180,13 +192,9 @@ func (d *coffeesDataSource) Configure(_ context.Context, req datasource.Configur
 				Price:       1.1,
 				Ingredient:  ingredients,
 			}); err != nil {
-				resp.Diagnostics.AddError(
-					"Unexpected Data Source Configure Type",
-					fmt.Sprintf("Failed to configure the available coffees: %v", err),
-				)
+				return err
 			}
 		}
 	}
-
-	d.client = cc
+	return nil
 }

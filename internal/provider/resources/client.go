@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"terraform-provider-hashicups/internal/client"
-	"terraform-provider-hashicups/internal/model"
+
+	"terraform-provider-provs/internal/client"
+	"terraform-provider-provs/internal/model"
 
 	"github.com/google/uuid"
 )

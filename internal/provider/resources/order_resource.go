@@ -3,9 +3,10 @@ package resources
 import (
 	"context"
 	"fmt"
-	client2 "terraform-provider-hashicups/internal/client"
-	"terraform-provider-hashicups/internal/model"
 	"time"
+
+	"terraform-provider-provs/internal/client"
+	"terraform-provider-provs/internal/model"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -311,7 +312,7 @@ func (r *orderResource) Configure(_ context.Context, req resource.ConfigureReque
 		return
 	}
 
-	client, ok := req.ProviderData.(client2.BackendClient)
+	client, ok := req.ProviderData.(client.BackendClient)
 
 	if !ok {
 		resp.Diagnostics.AddError(

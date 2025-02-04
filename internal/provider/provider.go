@@ -3,10 +3,10 @@ package provider
 import (
 	"context"
 	"os"
-	client2 "terraform-provider-hashicups/internal/client"
-	"terraform-provider-hashicups/internal/provider/datasources"
-	"terraform-provider-hashicups/internal/provider/functions"
-	"terraform-provider-hashicups/internal/provider/resources"
+	"terraform-provider-provs/internal/client/filesystem"
+	"terraform-provider-provs/internal/provider/datasources"
+	"terraform-provider-provs/internal/provider/functions"
+	"terraform-provider-provs/internal/provider/resources"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/function"
@@ -116,7 +116,7 @@ func (p *provsProvider) Configure(ctx context.Context, req provider.ConfigureReq
 	tflog.Debug(ctx, "Creating Provs client")
 
 	// Create a new Provs client using the configuration values
-	c, err := client2.NewFsClient(storagePath)
+	c, err := filesystem.NewFsClient(storagePath)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to Create storage client",

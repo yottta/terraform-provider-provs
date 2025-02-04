@@ -1,4 +1,4 @@
-package client
+package filesystem
 
 import (
 	"bytes"
@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"terraform-provider-provs/internal/client"
 
 	"github.com/google/uuid"
 	"github.com/spf13/afero"
@@ -18,7 +19,7 @@ type fsClient struct {
 	fs afero.Fs
 }
 
-func NewFsClient(basePath string) (BackendClient, error) {
+func NewFsClient(basePath string) (client.BackendClient, error) {
 	if !path.IsAbs(basePath) {
 		return nil, fmt.Errorf("only absolute paths allowed")
 	}

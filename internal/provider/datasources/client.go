@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"io"
 	"strconv"
-	"terraform-provider-hashicups/internal/client"
-	"terraform-provider-hashicups/internal/model"
+	
+	"terraform-provider-provs/internal/client"
+	"terraform-provider-provs/internal/model"
 )
 
 type coffeesClient struct {

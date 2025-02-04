@@ -2,8 +2,9 @@ package functions
 
 import (
 	"context"
-	"github.com/hashicorp/terraform-plugin-framework/function"
 	"math"
+
+	"github.com/hashicorp/terraform-plugin-framework/function"
 )
 
 // Ensure the implementation satisfies the desired interfaces.
