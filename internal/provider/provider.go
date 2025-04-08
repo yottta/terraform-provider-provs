@@ -9,6 +9,7 @@ import (
 	"terraform-provider-provs/internal/provider/resources"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
 	"github.com/hashicorp/terraform-plugin-framework/function"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -20,8 +21,9 @@ import (
 
 // Ensure the implementation satisfies the expected interfaces.
 var (
-	_ provider.Provider              = &provsProvider{}
-	_ provider.ProviderWithFunctions = &provsProvider{}
+	_ provider.Provider                       = &provsProvider{}
+	_ provider.ProviderWithEphemeralResources = &provsProvider{}
+	_ provider.ProviderWithFunctions          = &provsProvider{}
 )
 
 // provsProviderModel maps provider schema data to a Go type.
@@ -44,6 +46,12 @@ type provsProvider struct {
 	// provider is built and ran locally, and "test" when running acceptance
 	// testing.
 	version string
+}
+
+func (p *provsProvider) EphemeralResources(_ context.Context) []func() ephemeral.EphemeralResource {
+	return []func() ephemeral.EphemeralResource{
+		resources.NewSecretResource,
+	}
 }
 
 // Metadata returns the provider type name.
