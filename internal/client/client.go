@@ -5,23 +5,25 @@ import (
 	"encoding/json"
 	"io"
 	"terraform-provider-provs/internal/model"
+
+	"github.com/google/uuid"
 )
 
-type Client[T model.Ider] interface {
+type Client[T model.IDer] interface {
 	GetAll() ([]T, error)
 	GetByID(id string) (T, error)
-	CreateWithID(obj T) error
+	// Create will use the obj.GetID as identifier is specified. Otherwise, will generate one and will call obj.SetID with it
 	Create(obj T) (T, error)
 	Update(obj T) error
 	Delete(id string) error
 }
 
-type client[T model.Ider] struct {
+type client[T model.IDer] struct {
 	resType string
 	c       BackendClient
 }
 
-func NewClient[T model.Ider](backend BackendClient, resType string) Client[T] {
+func NewClient[T model.IDer](backend BackendClient, resType string) Client[T] {
 	return &client[T]{
 		c:       backend,
 		resType: resType,
@@ -45,25 +47,17 @@ func (c *client[T]) GetByID(id string) (T, error) {
 	return c.readerToObj(dat)
 }
 
-func (c *client[T]) CreateWithID(obj T) error {
-	read, err := c.objToReader(obj)
-	if err != nil {
-		return err
-	}
-	_, err = c.c.CreateWithId(c.resType, obj.GetID(), read)
-	return err
-}
-
 func (c *client[T]) Create(obj T) (T, error) {
+	if obj.GetID() == "" {
+		obj.SetID(uuid.NewString())
+	}
 	read, err := c.objToReader(obj)
 	if err != nil {
 		return obj, err
 	}
-	id, err := c.c.Create(c.resType, read)
-	if err != nil {
+	if err := c.c.CreateWithId(c.resType, obj.GetID(), read); err != nil {
 		return obj, err
 	}
-	obj.SetID(id)
 	return obj, nil
 }
 

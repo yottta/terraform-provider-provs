@@ -1,6 +1,6 @@
 package model
 
-type Ider interface {
+type IDer interface {
 	GetID() string
 	SetID(string)
 }

@@ -146,6 +146,7 @@ func (p *provsProvider) Resources(_ context.Context) []func() resource.Resource 
 	return []func() resource.Resource{
 		resources.NewOrderResource,
 		resources.Issue2372Resource,
+		resources.NewWriteOnlyResource,
 	}
 }
 

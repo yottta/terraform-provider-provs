@@ -9,7 +9,6 @@ import (
 	"path"
 	"terraform-provider-provs/internal/client"
 
-	"github.com/google/uuid"
 	"github.com/spf13/afero"
 	_ "github.com/spf13/afero"
 )
@@ -32,10 +31,6 @@ func NewFsClient(basePath string) (client.BackendClient, error) {
 			basePath,
 		),
 	}, nil
-}
-
-func (c *fsClient) Create(resType string, body io.Reader) (string, error) {
-	return c.CreateWithId(resType, uuid.NewString(), body)
 }
 
 func (c *fsClient) Read(resType string, resId string) (io.Reader, error) {
@@ -63,20 +58,20 @@ func (c *fsClient) Update(resType string, resId string, newContent io.Reader) er
 	if err := c.Destroy(resType, resId); err != nil {
 		return err
 	}
-	if _, err := c.CreateWithId(resType, resId, newContent); err != nil {
+	if err := c.CreateWithId(resType, resId, newContent); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (c *fsClient) CreateWithId(resType string, resId string, body io.Reader) (string, error) {
+func (c *fsClient) CreateWithId(resType string, resId string, body io.Reader) error {
 	if err := c.fs.Mkdir(resType, 0744); err != nil && !errors.Is(err, os.ErrExist) {
-		return "", err
+		return err
 	}
 	fileName := fmt.Sprintf("%s%s%s", resType, string(os.PathSeparator), resId)
 	f, err := c.fs.OpenFile(fileName, os.O_CREATE|os.O_WRONLY, os.FileMode(0644))
 	if err != nil {
-		return "", err
+		return err
 	}
 	defer func() {
 		_ = f.Close()
@@ -86,7 +81,7 @@ func (c *fsClient) CreateWithId(resType string, resId string, body io.Reader) (s
 	for {
 		n, err := body.Read(b)
 		if err != nil && err != io.EOF {
-			return "", err
+			return err
 		}
 		if n == 0 {
 			break
@@ -94,11 +89,11 @@ func (c *fsClient) CreateWithId(resType string, resId string, body io.Reader) (s
 
 		// write a chunk
 		if _, err := f.Write(b[:n]); err != nil {
-			return "", err
+			return err
 		}
 
 	}
-	return resId, nil
+	return nil
 
 }
 

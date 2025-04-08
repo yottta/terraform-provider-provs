@@ -142,7 +142,7 @@ func (r *orderResource) Create(ctx context.Context, req resource.CreateRequest, 
 		ID:    uuid.NewString(),
 		Items: items,
 	}
-	if err := r.client.CreateWithID(o); err != nil {
+	if _, err := r.client.Create(o); err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating order",
 			"Could not create order, unexpected error: "+err.Error(),

@@ -26,7 +26,7 @@ func main() {
 	flag.Parse()
 
 	opts := providerserver.ServeOpts{
-		Address: "registry.opentofu.org/edu/provs",
+		Address: "registry.hashicorp.io/edu/provs",
 		Debug:   debug,
 	}
 

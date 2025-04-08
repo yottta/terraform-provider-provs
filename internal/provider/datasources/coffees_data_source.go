@@ -183,7 +183,7 @@ func (d *coffeesDataSource) provisionData() error {
 					Quantity: i * j,
 				})
 			}
-			if err := d.client.CreateWithID(&model.Coffee{
+			if _, err := d.client.Create(&model.Coffee{
 				ID:          strconv.Itoa(i),
 				Name:        fmt.Sprintf("Name %d", i),
 				Teaser:      fmt.Sprintf("Teaser %d", i),
