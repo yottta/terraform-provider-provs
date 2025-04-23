@@ -1,4 +1,4 @@
-package datasources
+package provider
 
 import (
 	"context"
@@ -11,10 +11,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-)
-
-const (
-	coffeesResourceType = "coffees"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -56,7 +52,7 @@ type coffeesDataSource struct {
 
 // Metadata returns the data source type name.
 func (d *coffeesDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_" + coffeesResourceType
+	resp.TypeName = req.ProviderTypeName + "_" + typeCoffees
 }
 
 // Schema defines the schema for the data source.
@@ -161,7 +157,7 @@ func (d *coffeesDataSource) Configure(_ context.Context, req datasource.Configur
 		return
 	}
 
-	d.client = client.NewClient[*model.Coffee](c, coffeesResourceType)
+	d.client = client.NewClient[*model.Coffee](c, typeCoffees)
 	if err := d.provisionData(); err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to create coffee data",

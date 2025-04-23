@@ -1,4 +1,4 @@
-package functions
+package provider
 
 import (
 	"context"
@@ -12,7 +12,7 @@ var _ function.Function = &ComputeTaxFunction{}
 
 type ComputeTaxFunction struct{}
 
-func NewComputeTaxFunction() function.Function {
+func NewFunctionComputeTax() function.Function {
 	return &ComputeTaxFunction{}
 }
 

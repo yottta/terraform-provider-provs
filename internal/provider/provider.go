@@ -4,9 +4,6 @@ import (
 	"context"
 	"os"
 	"terraform-provider-provs/internal/client/filesystem"
-	"terraform-provider-provs/internal/provider/datasources"
-	"terraform-provider-provs/internal/provider/functions"
-	"terraform-provider-provs/internal/provider/resources"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
@@ -46,12 +43,6 @@ type provsProvider struct {
 	// provider is built and ran locally, and "test" when running acceptance
 	// testing.
 	version string
-}
-
-func (p *provsProvider) EphemeralResources(_ context.Context) []func() ephemeral.EphemeralResource {
-	return []func() ephemeral.EphemeralResource{
-		resources.NewSecretResource,
-	}
 }
 
 // Metadata returns the provider type name.
@@ -145,21 +136,29 @@ func (p *provsProvider) Configure(ctx context.Context, req provider.ConfigureReq
 // DataSources defines the data sources implemented in the provider.
 func (p *provsProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
-		datasources.NewCoffeesDataSource,
+		NewCoffeesDataSource,
 	}
 }
 
 // Resources defines the resources implemented in the provider.
 func (p *provsProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
-		resources.NewOrderResource,
-		resources.Issue2372Resource,
-		resources.NewWriteOnlyResource,
+		NewResourceOrder,
+		NewResourceIssue2372,
+		NewResourceSecret,
+		NewResourceSecretManager,
 	}
 }
 
 func (p *provsProvider) Functions(context.Context) []func() function.Function {
 	return []func() function.Function{
-		functions.NewComputeTaxFunction,
+		NewFunctionComputeTax,
+	}
+}
+
+func (p *provsProvider) EphemeralResources(_ context.Context) []func() ephemeral.EphemeralResource {
+	return []func() ephemeral.EphemeralResource{
+		NewEphemeralRandom,
+		NewEphemeralSecret,
 	}
 }

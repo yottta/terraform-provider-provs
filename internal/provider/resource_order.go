@@ -1,4 +1,4 @@
-package resources
+package provider
 
 import (
 	"context"
@@ -15,10 +15,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-)
-
-const (
-	orderResourceType = "order"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -51,8 +47,8 @@ type orderItemCoffeeModel struct {
 	Image       types.String  `tfsdk:"image"`
 }
 
-// NewOrderResource is a helper function to simplify the provider implementation.
-func NewOrderResource() resource.Resource {
+// NewResourceOrder is a helper function to simplify the provider implementation.
+func NewResourceOrder() resource.Resource {
 	return &orderResource{}
 }
 
@@ -63,7 +59,7 @@ type orderResource struct {
 
 // Metadata returns the resource type name.
 func (r *orderResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_" + orderResourceType
+	resp.TypeName = req.ProviderTypeName + "_" + typeOrder
 }
 
 // Schema defines the schema for the resource.
@@ -331,5 +327,5 @@ func (r *orderResource) Configure(_ context.Context, req resource.ConfigureReque
 		return
 	}
 
-	r.client = client.NewClient[*model.Order](c, orderResourceType)
+	r.client = client.NewClient[*model.Order](c, typeOrder)
 }

@@ -1,4 +1,4 @@
-package resources
+package provider
 
 import (
 	"context"
@@ -19,8 +19,8 @@ var (
 	_ resource.Resource = &issue2372Resource{}
 )
 
-// Issue2372Resource is a helper function to simplify the provider implementation.
-func Issue2372Resource() resource.Resource {
+// NewResourceIssue2372 is a helper function to simplify the provider implementation.
+func NewResourceIssue2372() resource.Resource {
 	return &issue2372Resource{}
 }
 
